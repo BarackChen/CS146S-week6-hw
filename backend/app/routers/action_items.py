@@ -1,28 +1,14 @@
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import asc, desc, func, select
+from sqlalchemy import asc, desc, select
 from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..models import ActionItem
-from ..schemas import ActionItemCreate, ActionItemPatch, ActionItemRead, CountRead
+from ..schemas import ActionItemCreate, ActionItemPatch, ActionItemRead
 
 router = APIRouter(prefix="/action-items", tags=["action_items"])
-
-
-def apply_action_item_filters(stmt, completed: Optional[bool]):
-    if completed is not None:
-        stmt = stmt.where(ActionItem.completed.is_(completed))
-    return stmt
-
-
-def apply_action_item_sort(stmt, sort: str):
-    sort_field = sort.lstrip("-")
-    order_fn = desc if sort.startswith("-") else asc
-    if hasattr(ActionItem, sort_field):
-        return stmt.order_by(order_fn(getattr(ActionItem, sort_field)))
-    return stmt.order_by(desc(ActionItem.created_at))
 
 
 @router.get("/", response_model=list[ActionItemRead])
@@ -33,24 +19,19 @@ def list_items(
     limit: int = Query(50, le=200),
     sort: str = Query("-created_at"),
 ) -> list[ActionItemRead]:
-    stmt = apply_action_item_sort(
-        apply_action_item_filters(select(ActionItem), completed), sort
-    )
+    stmt = select(ActionItem)
+    if completed is not None:
+        stmt = stmt.where(ActionItem.completed.is_(completed))
+
+    sort_field = sort.lstrip("-")
+    order_fn = desc if sort.startswith("-") else asc
+    if hasattr(ActionItem, sort_field):
+        stmt = stmt.order_by(order_fn(getattr(ActionItem, sort_field)))
+    else:
+        stmt = stmt.order_by(desc(ActionItem.created_at))
 
     rows = db.execute(stmt.offset(skip).limit(limit)).scalars().all()
     return [ActionItemRead.model_validate(row) for row in rows]
-
-
-@router.get("/count", response_model=CountRead)
-def count_items(
-    db: Session = Depends(get_db),
-    completed: Optional[bool] = None,
-) -> CountRead:
-    stmt = apply_action_item_filters(
-        select(func.count()).select_from(ActionItem), completed
-    )
-    total = db.execute(stmt).scalar_one()
-    return CountRead(total=total)
 
 
 @router.post("/", response_model=ActionItemRead, status_code=201)
