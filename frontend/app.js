@@ -47,92 +47,23 @@ async function runWithErrorHandling(action) {
   }
 }
 
-const PAGE_SIZE = 5;
-
-const noteState = {
-  page: 0,
-  pageSize: PAGE_SIZE,
-  q: '',
-};
-
-const actionState = {
-  page: 0,
-  pageSize: PAGE_SIZE,
-  completed: null,
-};
-
-function buildURL(path, params = {}) {
-  const query = new URLSearchParams();
-  for (const [key, value] of Object.entries(params)) {
-    if (value === undefined || value === null || value === '') continue;
-    query.set(key, value);
-  }
-
-  const queryString = query.toString();
-  return queryString ? `${path}?${queryString}` : path;
-}
-
-function updatePagination(prefix, state, total) {
-  const prev = document.getElementById(`${prefix}-prev`);
-  const next = document.getElementById(`${prefix}-next`);
-  const pageInfo = document.getElementById(`${prefix}-page-info`);
-  const count = document.getElementById(`${prefix}-count`);
-  const totalPages = total > 0 ? Math.ceil(total / state.pageSize) : 0;
-
-  prev.disabled = state.page === 0;
-  next.disabled = total === 0 || state.page >= totalPages - 1;
-  pageInfo.textContent =
-    total === 0 ? '目前無資料' : `第 ${state.page + 1} / ${totalPages} 頁`;
-  count.textContent = `共 ${total} 筆資料`;
-}
-
-async function loadNotes() {
+async function loadNotes(params = {}) {
   const list = document.getElementById('notes');
   list.innerHTML = '';
-  const listParams = {
-    q: noteState.q,
-    skip: noteState.page * noteState.pageSize,
-    limit: noteState.pageSize,
-  };
-  const countParams = { q: noteState.q };
-  const [notes, noteCount] = await Promise.all([
-    fetchJSON(buildURL('/notes/', listParams)),
-    fetchJSON(buildURL('/notes/count', countParams)),
-  ]);
-
-  if (notes.length === 0 && noteCount.total > 0 && noteState.page > 0) {
-    noteState.page -= 1;
-    return loadNotes();
-  }
-
+  const query = new URLSearchParams(params);
+  const notes = await fetchJSON('/notes/?' + query.toString());
   for (const n of notes) {
     const li = document.createElement('li');
     li.textContent = `${n.title}: ${n.content}`;
     list.appendChild(li);
   }
-
-  updatePagination('notes', noteState, noteCount.total);
 }
 
-async function loadActions() {
+async function loadActions(params = {}) {
   const list = document.getElementById('actions');
   list.innerHTML = '';
-  const listParams = {
-    completed: actionState.completed,
-    skip: actionState.page * actionState.pageSize,
-    limit: actionState.pageSize,
-  };
-  const countParams = { completed: actionState.completed };
-  const [items, actionCount] = await Promise.all([
-    fetchJSON(buildURL('/action-items/', listParams)),
-    fetchJSON(buildURL('/action-items/count', countParams)),
-  ]);
-
-  if (items.length === 0 && actionCount.total > 0 && actionState.page > 0) {
-    actionState.page -= 1;
-    return loadActions();
-  }
-
+  const query = new URLSearchParams(params);
+  const items = await fetchJSON('/action-items/?' + query.toString());
   for (const a of items) {
     const li = document.createElement('li');
     li.textContent = `${a.description} [${a.completed ? '已完成' : '未完成'}]`;
@@ -142,7 +73,7 @@ async function loadActions() {
       btn.onclick = async () => {
         await runWithErrorHandling(async () => {
           await fetchJSON(`/action-items/${a.id}/complete`, { method: 'PUT' });
-          await loadActions();
+          await loadActions(params);
         });
       };
       li.appendChild(btn);
@@ -156,15 +87,13 @@ async function loadActions() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ completed: false }),
           });
-          await loadActions();
+          await loadActions(params);
         });
       };
       li.appendChild(btn);
     }
     list.appendChild(li);
   }
-
-  updatePagination('actions', actionState, actionCount.total);
 }
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -188,16 +117,14 @@ window.addEventListener('DOMContentLoaded', () => {
         body: JSON.stringify({ title, content }),
       });
       e.target.reset();
-      noteState.page = 0;
       await loadNotes();
     });
   });
 
   document.getElementById('note-search-btn').addEventListener('click', async () => {
     await runWithErrorHandling(async () => {
-      noteState.q = document.getElementById('note-search').value.trim();
-      noteState.page = 0;
-      await loadNotes();
+      const q = document.getElementById('note-search').value;
+      await loadNotes({ q });
     });
   });
 
@@ -211,46 +138,14 @@ window.addEventListener('DOMContentLoaded', () => {
         body: JSON.stringify({ description }),
       });
       e.target.reset();
-      actionState.page = 0;
       await loadActions();
     });
   });
 
   document.getElementById('filter-completed').addEventListener('change', (e) => {
     runWithErrorHandling(async () => {
-      actionState.completed = e.target.checked ? true : null;
-      actionState.page = 0;
-      await loadActions();
-    });
-  });
-
-  document.getElementById('notes-prev').addEventListener('click', () => {
-    if (noteState.page === 0) return;
-    runWithErrorHandling(async () => {
-      noteState.page -= 1;
-      await loadNotes();
-    });
-  });
-
-  document.getElementById('notes-next').addEventListener('click', () => {
-    runWithErrorHandling(async () => {
-      noteState.page += 1;
-      await loadNotes();
-    });
-  });
-
-  document.getElementById('actions-prev').addEventListener('click', () => {
-    if (actionState.page === 0) return;
-    runWithErrorHandling(async () => {
-      actionState.page -= 1;
-      await loadActions();
-    });
-  });
-
-  document.getElementById('actions-next').addEventListener('click', () => {
-    runWithErrorHandling(async () => {
-      actionState.page += 1;
-      await loadActions();
+      const checked = e.target.checked;
+      await loadActions(checked ? { completed: true } : {});
     });
   });
 

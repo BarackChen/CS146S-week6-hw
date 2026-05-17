@@ -1,28 +1,14 @@
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import asc, desc, func, select
+from sqlalchemy import asc, desc, select
 from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..models import Note
-from ..schemas import CountRead, NoteCreate, NotePatch, NoteRead
+from ..schemas import NoteCreate, NotePatch, NoteRead
 
 router = APIRouter(prefix="/notes", tags=["notes"])
-
-
-def apply_note_filters(stmt, q: Optional[str]):
-    if q:
-        stmt = stmt.where((Note.title.contains(q)) | (Note.content.contains(q)))
-    return stmt
-
-
-def apply_note_sort(stmt, sort: str):
-    sort_field = sort.lstrip("-")
-    order_fn = desc if sort.startswith("-") else asc
-    if hasattr(Note, sort_field):
-        return stmt.order_by(order_fn(getattr(Note, sort_field)))
-    return stmt.order_by(desc(Note.created_at))
 
 
 @router.get("/", response_model=list[NoteRead])
@@ -33,20 +19,19 @@ def list_notes(
     limit: int = Query(50, le=200),
     sort: str = Query("-created_at", description="依欄位排序；前綴 - 代表遞減排序"),
 ) -> list[NoteRead]:
-    stmt = apply_note_sort(apply_note_filters(select(Note), q), sort)
+    stmt = select(Note)
+    if q:
+        stmt = stmt.where((Note.title.contains(q)) | (Note.content.contains(q)))
+
+    sort_field = sort.lstrip("-")
+    order_fn = desc if sort.startswith("-") else asc
+    if hasattr(Note, sort_field):
+        stmt = stmt.order_by(order_fn(getattr(Note, sort_field)))
+    else:
+        stmt = stmt.order_by(desc(Note.created_at))
 
     rows = db.execute(stmt.offset(skip).limit(limit)).scalars().all()
     return [NoteRead.model_validate(row) for row in rows]
-
-
-@router.get("/count", response_model=CountRead)
-def count_notes(
-    db: Session = Depends(get_db),
-    q: Optional[str] = None,
-) -> CountRead:
-    stmt = apply_note_filters(select(func.count()).select_from(Note), q)
-    total = db.execute(stmt).scalar_one()
-    return CountRead(total=total)
 
 
 @router.post("/", response_model=NoteRead, status_code=201)
