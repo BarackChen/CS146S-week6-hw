@@ -24,6 +24,10 @@ class NotePatch(BaseModel):
     content: str | None = None
 
 
+class CountRead(BaseModel):
+    total: int
+
+
 class ActionItemCreate(BaseModel):
     description: str
 
