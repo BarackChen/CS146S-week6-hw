@@ -21,3 +21,16 @@ def test_create_list_and_patch_notes(client):
     assert r.status_code == 200
     patched = r.json()
     assert patched["title"] == "Updated"
+
+
+def test_count_notes_respects_search(client):
+    client.post("/notes/", json={"title": "Alpha", "content": "First entry"})
+    client.post("/notes/", json={"title": "Beta", "content": "Second entry"})
+
+    r = client.get("/notes/count")
+    assert r.status_code == 200
+    assert r.json() == {"total": 2}
+
+    r = client.get("/notes/count", params={"q": "Second"})
+    assert r.status_code == 200
+    assert r.json() == {"total": 1}
