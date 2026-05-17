@@ -1,0 +1,47 @@
+# Python bytecode/cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Build/package output
+build/
+dist/
+wheels/
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# uv/local Python tooling
+.uv-cache/
+.python-version.local
+
+# Test, lint, and coverage output
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# SQLite runtime databases
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.sqlite-journal
+
+# Logs
+*.log
+
+# OS/editor files
+.DS_Store
+.idea/
+.vscode/

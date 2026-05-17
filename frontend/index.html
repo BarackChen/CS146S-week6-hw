@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>現代軟體開發第 7 週作業專案</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main>
+      <h1>現代軟體開發第 7 週作業專案</h1>
+      <div id="error-message" class="error-message" role="alert" aria-live="polite" hidden></div>
+
+      <section>
+        <h2>筆記</h2>
+        <form id="note-form">
+          <input id="note-title" placeholder="標題" data-required-message="請輸入筆記標題。" required />
+          <input id="note-content" placeholder="內容" data-required-message="請輸入筆記內容。" required />
+          <button type="submit">新增</button>
+        </form>
+        <div style="margin:.25rem 0;">
+          <input id="note-search" placeholder="搜尋" />
+          <button id="note-search-btn">搜尋</button>
+        </div>
+        <ul id="notes"></ul>
+      </section>
+
+      <section>
+        <h2>待辦事項</h2>
+        <form id="action-form">
+          <input id="action-desc" placeholder="說明" data-required-message="請輸入待辦事項說明。" required />
+          <button type="submit">新增</button>
+        </form>
+        <div style="margin:.25rem 0;">
+          <label><input type="checkbox" id="filter-completed" /> 只顯示已完成項目</label>
+        </div>
+        <ul id="actions"></ul>
+      </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+  </html>
+
